@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CalcoBot ⚡ Physics Solver</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #0f0f1e, #1a0033);
+    color: #00ffea;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  .container {
+    width: 420px;
+    padding: 30px;
+    background: rgba(10, 10, 30, 0.9);
+    border: 2px solid #00ffea;
+    border-radius: 15px;
+    box-shadow: 0 0 30px #00ffea88;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #00ffea;
+  }
+  .subtitle {
+    text-align: center;
+    color: #00ff99;
+    margin-bottom: 20px;
+  }
+  .chat {
+    height: 400px;
+    overflow-y: auto;
+    padding: 15px;
+    background: #000000dd;
+    border: 1px solid #00ffea44;
+    border-radius: 10px;
+    margin-bottom: 15px;
+  }
+  .msg {
+    margin: 12px 0;
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 85%;
+    animation: fadeIn  was0.4s;
+  }
+  .bot { background: #00ffea22; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .user { background: #ff00aa33; align-self: flex-end; margin-left: auto; border-bottom-right-radius: 4px; }
+  input {
+    width: 100%;
+    padding: 12px;
+    background: #111122;
+    border: 1px solid #00ffea;
+    color: #00ffea;
+    border-radius: 10px;
+    font-size: 1em;
+  }
+  input:focus { outline: none; box-shadow: 0 0 15px #00ffea; }
+  .credit { text-align: center; margin-top: 20px; font-size: 0.8em; color: #00ff9955; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>⚡ CalcoBot</h1>
+  <p class="subtitle">Your dark physics solver</p>
+  
+  <div class="chat" id="chat"></div>
+  
+  <input type="text" id="userInput" placeholder="Type your values or ask help..." autocomplete="off">
+  
+  <div class="credit">Made with ❤️ for physics lovers</div>
+</div>
+
+<script>
+// Kinematics equations (SUVAT)
+const equations = {
+  v: (u, a, t) => u + a * t,
+  u: (v, a, t) => v - a * t,
+  s: (u, t, a) => u * t + 0.5 * a * t * t,
+  t1: (v, u, a) => (v - u) / a,           // from v = u + at
+  t2: (s, u, a) => {                      // quadratic
+    const disc = u*u + 2*a*s;
+    if (disc < 0) return null;
+    return (-u + Math.sqrt(disc)) / a;
+  }
+};
+
+let known = {}; // will store {u: 10, v: null, a: 2, t: null, s: 5}
+
+function addMessage(text, type = "bot") {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function solve() {
+  const u = known.u, v = known.v, a = known.a, t = known.t, s = known.s;
+  let solved = false;
+
+  // Try to find missing variables
+  if (v === null && u !== null && a !== null && t !== null) {
+    known.v = equations.v(u, a, t);
+    addMessage(`Calculated ➜ v = ${known.v.toFixed(3)} m/s 🚀`);
+    solved = true;
+  }
+  if (u === null && v !== null && a !== null && t !== null) {
+    known.u = equations.u(v, a, t);
+    addMessage(`Calculated ➜ u = ${known.u.toFixed(3)} m/s`);
+    solved = true;
+  }
+  if (t === null && v !== null && u !== null && a !== null && a !== 0) {
+    known.t = equations.t1(v, u, a);
+    addMessage(`Calculated ➜ t = ${known.t.toFixed(3)} s ⏱️`);
+    solved = true;
+  }
+  if (s === null && u !== null && t !== null && a !== null) {
+    known.s = equations.s(u, t, a);
+    addMessage(`Calculated ➜ s = ${known.s.toFixed(3)} m 📏`);
+    solved = true;
+  }
+
+  if (!solved) addMessage("I need at least 3 values to solve! Try giving me more data 😎");
+  else showAll();
+}
+
+function showAll() {
+  let str = "Current values:\n";
+  str += `u = ${known.u ?? "?"} m/s\n`;
+  str += `v = ${known.v ?? "?"} m/s\n`;
+  str += `a = ${known.a ?? "?"} m/s²\n`;
+  str += `t = ${known.t ?? "?"} s\n`;
+  str += `s = ${known.s ?? "?"} m\n`;
+  addMessage(str);
+}
+
+addMessage("Hey there! I'm CalcoBot ⚡\nI solve kinematics (SUVAT) problems.\nJust type values like:\nu = 0\nv = 30\na = 5\nAnd I'll find the rest!\nType 'reset' anytime to start over.");
+
+document.getElementById("userInput").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") {
+    const input = this.value.trim();
+    if (!input) return;
+    
+    addMessage(input, "user");
+    this.value = "";
+
+    if (input.toLowerCase() === "reset" || input.toLowerCase() === "clear") {
+      known = {u:null, v:null, a:null, t:null, s:null};
+      addMessage("Reset done! Give me new values 🔄");
+      return;
+    }
+
+    // Parse lines like "u = 10" or just "10"
+    const lines = input.split("\n");
+    let count = 0;
+    for (let line of lines) {
+      line = line.trim().toLowerCase();
+      if (!line) continue;
+      const match = line.match(/([uvats])\s*=?\s*([+-]?\d*\.?\d+)/);
+      if (match) {
+        const variable = match[1];
+        const value = parseFloat(match[2]);
+        known[variable] = value;
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      const keys = Object.keys(known).filter(k => known[k] !== null).length;
+      if (keys >= 3) solve();
+      else addMessage(`Got ${keys}/5 values. Keep going! 💪`);
+    } else {
+      addMessage("I didn't understand that. Use format like: v = 20 or a = -9.81 🌙");
+    }
+  }
+});
+</script>
+
+</body>
+</html>
